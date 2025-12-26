@@ -120,13 +120,18 @@ function createCompletePdfSvg(well: Well, profileSvgElement: SVGSVGElement): str
   // Calcular altura total dos painéis
   const totalPanelsHeight = wellInfoPanel.height + legendPanel.height + soilDescPanel.height + (2 * panelGap);
 
-  // Dimensões totais
-  const totalWidth = profileWidth + panelsWidth + 40;
+  // Margens e espaçamentos
+  const leftMargin = 20;
+  const rightMargin = 20;
+  const gapBetweenProfileAndPanels = 20;
+
+  // Dimensões totais (com margens adequadas para evitar corte de bordas)
+  const totalWidth = leftMargin + profileWidth + gapBetweenProfileAndPanels + panelsWidth + rightMargin;
   const totalHeight = Math.max(profileHeight, totalPanelsHeight) + 60; // 60 = margem superior + título
 
   // Posições
-  const profileX = 20;
-  const panelsX = profileX + profileWidth + 20;
+  const profileX = leftMargin;
+  const panelsX = profileX + profileWidth + gapBetweenProfileAndPanels;
 
   // Posições Y dos painéis (distribuídos verticalmente)
   const wellInfoY = 40;
