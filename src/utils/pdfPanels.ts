@@ -13,9 +13,18 @@ import {
 } from '../constants/soilTypes';
 
 /**
+ * Interface para painéis SVG com dimensões
+ */
+export interface SvgPanel {
+  svg: string;
+  width: number;
+  height: number;
+}
+
+/**
  * Gera o painel de legenda em SVG
  */
-export function generateLegendSVG(usedSoilTypes: SoilType[]): string {
+export function generateLegendSVG(usedSoilTypes: SoilType[]): SvgPanel {
   const width = 280;
   const itemHeight = 20;
   const headerHeight = 25;
@@ -81,7 +90,7 @@ export function generateLegendSVG(usedSoilTypes: SoilType[]): string {
     </g>
   `;
 
-  return svgContent;
+  return { svg: svgContent, width, height };
 }
 
 /**
@@ -90,7 +99,7 @@ export function generateLegendSVG(usedSoilTypes: SoilType[]): string {
 export function generateWellInfoSVG(
   wellInfo: WellInfo,
   constructiveProfile: ConstructiveProfile
-): string {
+): SvgPanel {
   const width = 280;
   const rowHeight = 18;
   const headerHeight = 25;
@@ -180,13 +189,13 @@ export function generateWellInfoSVG(
     </g>
   `;
 
-  return svgContent;
+  return { svg: svgContent, width, height };
 }
 
 /**
  * Gera o painel de descrição do solo em SVG
  */
-export function generateSoilDescriptionSVG(layers: LithologicLayer[]): string {
+export function generateSoilDescriptionSVG(layers: LithologicLayer[]): SvgPanel {
   const width = 280;
   const headerHeight = 25;
   const lineHeight = 12;
@@ -280,7 +289,7 @@ export function generateSoilDescriptionSVG(layers: LithologicLayer[]): string {
     </g>
   `;
 
-  return svgContent;
+  return { svg: svgContent, width, height };
 }
 
 /**

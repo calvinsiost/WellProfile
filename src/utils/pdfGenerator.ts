@@ -35,9 +35,10 @@ export async function exportWellProfileToPDF(
     const svgWidth = parseFloat(svgElement.getAttribute('width') || '800');
     const svgHeight = parseFloat(svgElement.getAttribute('height') || '1000');
 
-    // Converter de pixels para mm (assumindo 96 DPI: 1px = 0.264583mm)
-    const svgWidthMM = svgWidth * 0.264583;
-    const svgHeightMM = svgHeight * 0.264583;
+    // Converter de pixels para mm (96 DPI: 1px = 25.4/96 mm)
+    const PX_TO_MM = 25.4 / 96;
+    const svgWidthMM = svgWidth * PX_TO_MM;
+    const svgHeightMM = svgHeight * PX_TO_MM;
 
     // Determinar orientação baseada no aspect ratio do conteúdo
     const isContentTall = svgHeightMM > svgWidthMM;
@@ -60,7 +61,7 @@ export async function exportWellProfileToPDF(
     // Calcular escala para ajustar o conteúdo à página mantendo proporções
     const scaleX = availableWidth / svgWidthMM;
     const scaleY = availableHeight / svgHeightMM;
-    const scale = Math.min(scaleX, scaleY); // Usar a menor escala para garantir que tudo caiba
+    const scale = Math.min(scaleX, scaleY, 1); // Limitar a no máximo 1 (não aumentar além de 100%)
 
     // Calcular dimensões finais
     const finalWidth = svgWidthMM * scale;
@@ -96,10 +97,10 @@ function createCompletePdfSvg(well: Well, profileSvgElement: SVGSVGElement): str
     new Set(well.lithologicProfile.map((l) => l.primarySoilType))
   );
 
-  // Gerar painéis em SVG
-  const legendSvg = generateLegendSVG(usedSoilTypes);
-  const wellInfoSvg = generateWellInfoSVG(well.wellInfo, well.constructiveProfile);
-  const soilDescSvg = generateSoilDescriptionSVG(well.lithologicProfile);
+  // Gerar painéis em SVG (agora com dimensões)
+  const legendPanel = generateLegendSVG(usedSoilTypes);
+  const wellInfoPanel = generateWellInfoSVG(well.wellInfo, well.constructiveProfile);
+  const soilDescPanel = generateSoilDescriptionSVG(well.lithologicProfile);
 
   // Obter o SVG do perfil como string (sem a tag svg externa)
   const serializer = new XMLSerializer();
@@ -108,21 +109,38 @@ function createCompletePdfSvg(well: Well, profileSvgElement: SVGSVGElement): str
   // Extrair apenas o conteúdo interno do SVG do perfil
   const profileContent = extractSvgContent(profileSvgString);
 
-  // Dimensões
+  // Dimensões do perfil
   const profileWidth = parseFloat(profileSvgElement.getAttribute('width') || '500');
   const profileHeight = parseFloat(profileSvgElement.getAttribute('height') || '800');
-  const panelsWidth = 300;
 
-  const totalWidth = profileWidth + panelsWidth + 40;
-  const totalHeight = Math.max(profileHeight, 1000);
+  // Dimensões dos painéis
+  const panelsWidth = 300;
+  const panelGap = 20;
+
+  // Calcular altura total dos painéis
+  const totalPanelsHeight = wellInfoPanel.height + legendPanel.height + soilDescPanel.height + (2 * panelGap);
+
+  // Margens e espaçamentos
+  const leftMargin = 20;
+  const rightMargin = 20;
+  const gapBetweenProfileAndPanels = 20;
+
+  // Dimensões totais (com margens adequadas para evitar corte de bordas)
+  const totalWidth = leftMargin + profileWidth + gapBetweenProfileAndPanels + panelsWidth + rightMargin;
+  const totalHeight = Math.max(profileHeight, totalPanelsHeight) + 60; // 60 = margem superior + título
 
   // Posições
-  const profileX = 20;
-  const panelsX = profileX + profileWidth + 20;
+  const profileX = leftMargin;
+  const panelsX = profileX + profileWidth + gapBetweenProfileAndPanels;
+
+  // Posições Y dos painéis (distribuídos verticalmente)
+  const wellInfoY = 40;
+  const legendY = wellInfoY + wellInfoPanel.height + panelGap;
+  const soilDescY = legendY + legendPanel.height + panelGap;
 
   // Montar SVG completo
   const completeSvg = `<?xml version="1.0" encoding="UTF-8"?>
-<svg width="${totalWidth}" height="${totalHeight}" xmlns="http://www.w3.org/2000/svg">
+<svg width="${totalWidth}" height="${totalHeight}" viewBox="0 0 ${totalWidth} ${totalHeight}" xmlns="http://www.w3.org/2000/svg">
   <defs>
     <style>
       text { font-family: Arial, sans-serif; }
@@ -135,20 +153,20 @@ function createCompletePdfSvg(well: Well, profileSvgElement: SVGSVGElement): str
   </g>
 
   <!-- Painéis laterais -->
-  <g transform="translate(${panelsX}, 40)">
+  <g transform="translate(${panelsX}, 0)">
     <!-- Informações do Poço -->
-    <g transform="translate(0, 0)">
-      ${wellInfoSvg}
+    <g transform="translate(0, ${wellInfoY})">
+      ${wellInfoPanel.svg}
     </g>
 
     <!-- Legenda -->
-    <g transform="translate(0, 350)">
-      ${legendSvg}
+    <g transform="translate(0, ${legendY})">
+      ${legendPanel.svg}
     </g>
 
     <!-- Descrição do Solo -->
-    <g transform="translate(0, 650)">
-      ${soilDescSvg}
+    <g transform="translate(0, ${soilDescY})">
+      ${soilDescPanel.svg}
     </g>
   </g>
 </svg>`;
