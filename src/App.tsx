@@ -31,7 +31,7 @@ function App() {
   const handleExportPDF = async () => {
     if (well && svgRef.current) {
       try {
-        await exportWellProfileToPDF(well.projectInfo.wellId, svgRef.current);
+        await exportWellProfileToPDF(well, svgRef.current);
       } catch (error) {
         alert('Erro ao gerar PDF. Verifique o console para mais detalhes.');
       }
