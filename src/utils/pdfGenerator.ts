@@ -22,15 +22,6 @@ export async function exportWellProfileToPDF(
     margins: { top: 10, bottom: 15, left: 10, right: 10 },
   }
 ): Promise<void> {
-  const pdf = new jsPDF({
-    orientation: options.orientation,
-    unit: 'mm',
-    format: options.format,
-  });
-
-  const pageWidth = pdf.internal.pageSize.getWidth();
-  const pageHeight = pdf.internal.pageSize.getHeight();
-
   try {
     // Criar SVG completo com perfil + painéis
     const completeSvg = createCompletePdfSvg(well, profileSvgElement);
@@ -40,12 +31,51 @@ export async function exportWellProfileToPDF(
     const svgDoc = parser.parseFromString(completeSvg, 'image/svg+xml');
     const svgElement = svgDoc.documentElement as unknown as SVGSVGElement;
 
+    // Obter dimensões do SVG em pixels
+    const svgWidth = parseFloat(svgElement.getAttribute('width') || '800');
+    const svgHeight = parseFloat(svgElement.getAttribute('height') || '1000');
+
+    // Converter de pixels para mm (assumindo 96 DPI: 1px = 0.264583mm)
+    const svgWidthMM = svgWidth * 0.264583;
+    const svgHeightMM = svgHeight * 0.264583;
+
+    // Determinar orientação baseada no aspect ratio do conteúdo
+    const isContentTall = svgHeightMM > svgWidthMM;
+    const orientation = isContentTall ? 'portrait' : 'landscape';
+
+    // Criar PDF
+    const pdf = new jsPDF({
+      orientation: orientation,
+      unit: 'mm',
+      format: options.format,
+    });
+
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    const pageHeight = pdf.internal.pageSize.getHeight();
+
+    // Calcular área disponível
+    const availableWidth = pageWidth - options.margins.left - options.margins.right;
+    const availableHeight = pageHeight - options.margins.top - options.margins.bottom;
+
+    // Calcular escala para ajustar o conteúdo à página mantendo proporções
+    const scaleX = availableWidth / svgWidthMM;
+    const scaleY = availableHeight / svgHeightMM;
+    const scale = Math.min(scaleX, scaleY); // Usar a menor escala para garantir que tudo caiba
+
+    // Calcular dimensões finais
+    const finalWidth = svgWidthMM * scale;
+    const finalHeight = svgHeightMM * scale;
+
+    // Centralizar na página
+    const xPos = options.margins.left + (availableWidth - finalWidth) / 2;
+    const yPos = options.margins.top + (availableHeight - finalHeight) / 2;
+
     // Converter SVG para PDF
     await svg2pdf(svgElement, pdf, {
-      x: options.margins.left,
-      y: options.margins.top,
-      width: pageWidth - options.margins.left - options.margins.right,
-      height: pageHeight - options.margins.top - options.margins.bottom,
+      x: xPos,
+      y: yPos,
+      width: finalWidth,
+      height: finalHeight,
     });
 
     // Salvar
