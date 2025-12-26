@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useRef, useState, useEffect } from 'react';
 import { useWellStore } from './stores/wellStore';
 import { WellProfileVisualization } from './components/WellProfile/WellProfileVisualization';
 import { WellInfoPanel } from './components/DataPanels/WellInfoPanel';
@@ -16,6 +16,17 @@ function App() {
   const svgRef = useRef<SVGSVGElement>(null);
   const [showValidation, setShowValidation] = useState(false);
   const { well, createNewWell, exportToJSON, loadFromJSON, reset } = useWellStore();
+
+  // Inicializar com poço vazio na primeira carga
+  useEffect(() => {
+    if (!well) {
+      const emptyTemplate = WELL_TEMPLATES[2]; // Poço Vazio
+      createNewWell(emptyTemplate.data.projectInfo || { wellId: 'PM-01' });
+      if (emptyTemplate.data.wellInfo) {
+        useWellStore.getState().updateWellInfo(emptyTemplate.data.wellInfo);
+      }
+    }
+  }, []);
 
   const handleExportPDF = async () => {
     if (well && svgRef.current) {
@@ -61,16 +72,19 @@ function App() {
     input.click();
   };
 
-  const handleNewFromTemplate = (templateIndex: number) => {
-    const template = WELL_TEMPLATES[templateIndex];
-    createNewWell(template.data.projectInfo);
-    if (template.data.wellInfo) {
-      useWellStore.getState().updateWellInfo(template.data.wellInfo);
-    }
-    if (template.data.constructiveProfile) {
-      template.data.constructiveProfile.elements.forEach((el) => {
-        useWellStore.getState().addConstructiveElement(el);
-      });
+  const handleLoadHypotheticalData = () => {
+    if (confirm('Carregar dados hipotéticos? Isso substituirá os dados atuais.')) {
+      reset();
+      const template = WELL_TEMPLATES[0]; // Poço de Monitoramento Padrão
+      createNewWell(template.data.projectInfo || { wellId: 'PM-01' });
+      if (template.data.wellInfo) {
+        useWellStore.getState().updateWellInfo(template.data.wellInfo);
+      }
+      if (template.data.constructiveProfile) {
+        template.data.constructiveProfile.elements.forEach((el) => {
+          useWellStore.getState().addConstructiveElement(el);
+        });
+      }
     }
   };
 
@@ -108,6 +122,12 @@ function App() {
               </>
             )}
             <button
+              onClick={handleLoadHypotheticalData}
+              className="bg-purple-600 hover:bg-purple-700 px-4 py-2 rounded text-sm font-medium"
+            >
+              Popular Dados Hipotéticos
+            </button>
+            <button
               onClick={handleImportJSON}
               className="bg-gray-600 hover:bg-gray-700 px-4 py-2 rounded text-sm font-medium"
             >
@@ -129,26 +149,7 @@ function App() {
 
       {/* Conteúdo Principal */}
       <div className="container mx-auto p-4">
-        {!well ? (
-          /* Tela Inicial - Seleção de Template */
-          <div className="max-w-4xl mx-auto">
-            <div className="bg-white rounded-lg shadow-lg p-8">
-              <h2 className="text-2xl font-bold mb-6 text-center">Começar Novo Projeto</h2>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {WELL_TEMPLATES.map((template, index) => (
-                  <div
-                    key={index}
-                    className="border-2 border-gray-300 rounded-lg p-4 hover:border-blue-500 cursor-pointer transition"
-                    onClick={() => handleNewFromTemplate(index)}
-                  >
-                    <h3 className="font-bold text-lg mb-2">{template.name}</h3>
-                    <p className="text-sm text-gray-600">{template.description}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        ) : (
+        {well && (
           /* Editor e Visualização */
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             {/* Coluna Esquerda - Editor */}
